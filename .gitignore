@@ -1,0 +1,98 @@
+# -----------------------------------
+# Root .gitignore for nlp-security-system
+# Monorepo: backend (Node/Express), frontend (React)
+# -----------------------------------
+
+# Node dependencies
+node_modules/
+**/node_modules/
+
+# Logs
+logs/
+*.log
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment files (keep examples)
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+
+# Test coverage and reports
+coverage/
+**/coverage/
+.nyc_output/
+junit.xml
+**/junit.xml
+reports/
+**/reports/
+test-results/
+**/test-results/
+
+# Build outputs
+build/
+**/build/
+dist/
+**/dist/
+out/
+.next/
+.nuxt/
+storybook-static/
+.vite/
+.vite_cache/
+.cache/
+.parcel-cache/
+.svelte-kit/
+
+# Temporary files and caches
+tmp/
+**/tmp/
+temp/
+**/temp/
+*.tmp
+*.temp
+*.swp
+*.swo
+*.orig
+
+# OS-specific
+.DS_Store
+Thumbs.db
+.AppleDouble
+.LSOverride
+
+# Docker
+.docker-cache/
+docker-compose.override.yml
+*.tar
+
+# IDE / Editor
+.vscode/
+.idea/
+*.iml
+
+# Git configuration (local)
+.git-credentials
+.gitconfig.local
+
+# Lint / Format caches
+.eslintcache
+.stylelintcache
+.prettier-cache
+
+# Turbo / monorepo
+.turbo/
+turbo/
+
+# Python (if any utility scripts generate these)
+.pytest_cache/
+.mypy_cache/
+__pycache__/

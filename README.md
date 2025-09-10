@@ -1,5 +1,7 @@
 # Natural Language Security Control System
 
+[▶ Watch Demo Video](./mercel_rec.mp4)
+
 A modern security control application built with Domain-Driven Design (DDD) and Event-Driven Architecture, featuring natural language command processing powered by Groq AI.
 
 ## Features

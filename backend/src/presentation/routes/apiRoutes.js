@@ -44,6 +44,28 @@ const {
   applyAllSecurityHeaders
 } = require('../../infrastructure/middleware/securityHeaders');
 
+// Schedule management middleware
+const {
+  validateScheduleIdParam,
+  validateScheduleCreation,
+  validateScheduleUpdate,
+  validateScheduleQuery,
+  validateBulkScheduleCreation,
+  validateBulkScheduleDeletion,
+  validateScheduleExpressionTest,
+  validateUpcomingSchedulesQuery
+} = require('../../infrastructure/middleware/scheduleValidation');
+
+const {
+  scheduleReadRateLimit,
+  scheduleCreateRateLimit,
+  scheduleModifyRateLimit,
+  scheduleBulkRateLimit,
+  scheduleTestRateLimit,
+  scheduleAdminRateLimit,
+  scheduleBurstProtection
+} = require('../../infrastructure/middleware/scheduleRateLimit');
+
 const router = express.Router();
 
 // Health check
@@ -52,7 +74,7 @@ router.get('/healthz', (req, res) => {
 });
 
 // Dependency injection will be done in app.js
-let authController, commandController, systemController, userController, zoneController;
+let authController, commandController, systemController, userController, zoneController, scheduleController;
 
 const setControllers = (controllers) => {
   authController = controllers.authController;
@@ -60,6 +82,7 @@ const setControllers = (controllers) => {
   systemController = controllers.systemController;
   userController = controllers.userController;
   zoneController = controllers.zoneController;
+  scheduleController = controllers.scheduleController;
 };
 
 // Auth routes
@@ -236,6 +259,146 @@ router.get('/zones/hierarchy/validate',
   auditZoneOperation(AUDIT_EVENTS.ZONE_HIERARCHY_VALIDATED),
   auditAccessControl(),
   (req, res, next) => zoneController.validateHierarchy(req, res, next)
+);
+
+// ========================================
+// SCHEDULE MANAGEMENT ROUTES
+// ========================================
+
+// Apply global security headers and burst protection to all schedule routes
+router.use('/schedules*', applyAllSecurityHeaders);
+router.use('/schedules*', scheduleBurstProtection());
+
+// POST /api/schedules - Create new scheduled task
+router.post('/schedules',
+  scheduleCreateRateLimit,
+  authMiddleware,
+  validateCsrfToken,
+  validateScheduleCreation,
+  (req, res, next) => scheduleController.createSchedule(req, res, next)
+);
+
+// GET /api/schedules - List user's scheduled tasks with filtering and pagination
+router.get('/schedules',
+  scheduleReadRateLimit,
+  authMiddleware,
+  validateScheduleQuery,
+  (req, res, next) => scheduleController.listSchedules(req, res, next)
+);
+
+// GET /api/schedules/statistics - Get user's schedule statistics
+router.get('/schedules/statistics',
+  scheduleReadRateLimit,
+  authMiddleware,
+  (req, res, next) => scheduleController.getStatistics(req, res, next)
+);
+
+// GET /api/schedules/upcoming - Get upcoming schedule executions
+router.get('/schedules/upcoming',
+  scheduleReadRateLimit,
+  authMiddleware,
+  validateUpcomingSchedulesQuery,
+  (req, res, next) => scheduleController.getUpcoming(req, res, next)
+);
+
+// POST /api/schedules/test - Test schedule expression parsing
+router.post('/schedules/test',
+  scheduleTestRateLimit,
+  authMiddleware,
+  validateScheduleExpressionTest,
+  (req, res, next) => scheduleController.testScheduleExpression(req, res, next)
+);
+
+// POST /api/schedules/bulk - Create multiple schedules
+router.post('/schedules/bulk',
+  scheduleBulkRateLimit,
+  authMiddleware,
+  validateCsrfToken,
+  validateBulkScheduleCreation,
+  (req, res, next) => scheduleController.bulkCreateSchedules(req, res, next)
+);
+
+// DELETE /api/schedules/bulk - Cancel multiple schedules
+router.delete('/schedules/bulk',
+  scheduleBulkRateLimit,
+  authMiddleware,
+  validateCsrfToken,
+  validateBulkScheduleDeletion,
+  (req, res, next) => scheduleController.bulkDeleteSchedules(req, res, next)
+);
+
+// PUT /api/schedules/bulk - Update multiple schedules
+router.put('/schedules/bulk',
+  scheduleBulkRateLimit,
+  authMiddleware,
+  validateCsrfToken,
+  (req, res, next) => scheduleController.bulkUpdateSchedules(req, res, next)
+);
+
+// GET /api/schedules/:id - Get specific scheduled task details
+router.get('/schedules/:id',
+  scheduleReadRateLimit,
+  authMiddleware,
+  validateScheduleIdParam,
+  (req, res, next) => scheduleController.getSchedule(req, res, next)
+);
+
+// PUT /api/schedules/:id - Update existing scheduled task
+router.put('/schedules/:id',
+  scheduleModifyRateLimit,
+  authMiddleware,
+  validateScheduleIdParam,
+  validateCsrfToken,
+  validateScheduleUpdate,
+  (req, res, next) => scheduleController.updateSchedule(req, res, next)
+);
+
+// DELETE /api/schedules/:id - Cancel/delete scheduled task
+router.delete('/schedules/:id',
+  scheduleModifyRateLimit,
+  authMiddleware,
+  validateScheduleIdParam,
+  validateCsrfToken,
+  (req, res, next) => scheduleController.deleteSchedule(req, res, next)
+);
+
+// ========================================
+// ADMINISTRATIVE SCHEDULE ROUTES
+// ========================================
+
+// GET /api/admin/schedules - Admin view of all schedules
+router.get('/admin/schedules',
+  scheduleAdminRateLimit,
+  authMiddleware,
+  adminOnly,
+  validateScheduleQuery,
+  (req, res, next) => scheduleController.listSchedules(req, res, next)
+);
+
+// POST /api/admin/schedules/execute/:id - Manually execute schedule
+router.post('/admin/schedules/execute/:id',
+  scheduleAdminRateLimit,
+  authMiddleware,
+  adminOnly,
+  validateScheduleIdParam,
+  validateCsrfToken,
+  (req, res, next) => scheduleController.executeSchedule(req, res, next)
+);
+
+// GET /api/admin/schedules/health - Scheduler health status
+router.get('/admin/schedules/health',
+  scheduleAdminRateLimit,
+  authMiddleware,
+  adminOnly,
+  (req, res, next) => scheduleController.getSchedulerHealth(req, res, next)
+);
+
+// GET /api/admin/schedules/statistics - System-wide schedule statistics
+router.get('/admin/schedules/statistics',
+  scheduleAdminRateLimit,
+  authMiddleware,
+  adminOnly,
+  (req, res, next) => scheduleController.getStatistics(req, res, next)
 );
 
 module.exports = { router, setControllers };

@@ -5,7 +5,7 @@
  * Provides different limits for different types of operations
  */
 
-const rateLimit = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 
 /**
  * Rate limit configurations for different zone operations
@@ -67,7 +67,7 @@ const RATE_LIMITS = {
  */
 const createUserBasedKeyGenerator = (operation) => {
   return (req) => {
-    const userId = req.user ? req.user.id : req.ip;
+    const userId = req.user ? req.user.id : ipKeyGenerator(req);
     return `${operation}:${userId}`;
   };
 };

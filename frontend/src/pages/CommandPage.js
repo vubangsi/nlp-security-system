@@ -15,6 +15,7 @@ const CommandPage = () => {
   const [zones, setZones] = useState([]);
   const [zonesLoading, setZonesLoading] = useState(false);
   const [zonesError, setZonesError] = useState('');
+  const [updating, setUpdating] = useState(false);
   const navigate = useNavigate();
   const userRole = localStorage.getItem('userRole');
 
@@ -28,6 +29,15 @@ const CommandPage = () => {
     // Load system state and zones
     fetchSystemState();
     fetchZones();
+
+    // Set up periodic refresh for system state (every 5 seconds)
+    const intervalId = setInterval(() => {
+      fetchSystemState();
+    }, 5000);
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(intervalId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchSystemState = async (forceRefresh = false) => {
@@ -55,6 +65,7 @@ const CommandPage = () => {
   };
 
   const handleZoneAction = async (zoneId, action, mode = 'home') => {
+    setUpdating(true);
     try {
       if (action === 'arm') {
         await apiService.armZone(zoneId, mode);
@@ -63,10 +74,17 @@ const CommandPage = () => {
         await apiService.disarmZone(zoneId);
         setSuccess('Zone disarmed successfully');
       }
-      
-      // Refresh zones and system state
+
+      // Immediately refresh zones and system state
       await Promise.all([fetchZones(), fetchSystemState(true)]);
-      
+
+      // Additional refresh to ensure all state changes are captured
+      setTimeout(async () => {
+        Promise.all([fetchZones(), fetchSystemState(true)]).finally(() => {
+          setUpdating(false);
+        });
+      }, 300);
+
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
@@ -94,6 +112,7 @@ const CommandPage = () => {
     setError('');
     setSuccess('');
     setLoading(true);
+    setUpdating(true);
 
     try {
       const result = await apiService.sendCommand(command);
@@ -102,13 +121,29 @@ const CommandPage = () => {
       setLastResult(result);
       setSuccess(result.result?.message || 'Command executed successfully');
 
-      // Refresh system state and zones after command with a small delay to ensure backend processing is complete
+      // Immediately refresh system state and zones after command execution
+      await Promise.all([
+        fetchSystemState(true),
+        fetchZones()
+      ]);
+
+      // Additional refresh after a short delay to catch any delayed state changes
       setTimeout(async () => {
-        await Promise.all([fetchSystemState(true), fetchZones()]); // Force refresh
-      }, 100);
+        Promise.all([fetchSystemState(true), fetchZones()]).finally(() => {
+          setUpdating(false);
+        });
+      }, 500);
+
     } catch (err) {
       setError(err.response?.data?.message || 'Command failed');
       setLastResult({ error: err.response?.data?.message || 'Command failed' });
+
+      // Still refresh state even on error, in case partial changes occurred
+      setTimeout(async () => {
+        Promise.all([fetchSystemState(true), fetchZones()]).finally(() => {
+          setUpdating(false);
+        });
+      }, 200);
     } finally {
       setLoading(false);
     }
@@ -133,6 +168,9 @@ const CommandPage = () => {
             <Link to="/command" className="nav-link active">
               💬 Commands
             </Link>
+            <Link to="/schedule" className="nav-link">
+              ⏰ Schedules
+            </Link>
             {userRole === 'admin' && (
               <Link to="/dashboard" className="nav-link">
                 📊 Dashboard
@@ -149,9 +187,10 @@ const CommandPage = () => {
       {systemState && (
         <div className="system-status" key={systemState.lastModified}>
           <div className="status-item">
-            <h3>🛡️ System Status</h3>
+            <h3>🛡️ System Status {updating && <span className="updating-indicator">🔄</span>}</h3>
             <div className={`status-value ${systemState.armed ? 'status-armed' : 'status-disarmed'}`}>
               {systemState.armed ? 'ARMED' : 'DISARMED'}
+              {updating && <span style={{ marginLeft: '8px', fontSize: '14px', opacity: 0.7 }}>Updating...</span>}
             </div>
           </div>
           <div className="status-item">

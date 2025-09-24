@@ -6,7 +6,6 @@
  */
 
 const validator = require('validator');
-const DOMPurify = require('isomorphic-dompurify');
 
 /**
  * Validation constants and patterns
@@ -47,11 +46,13 @@ const sanitizeInput = (input, options = {}) => {
     return input;
   }
 
-  // Remove HTML tags and dangerous content
-  let sanitized = DOMPurify.sanitize(input, { 
-    ALLOWED_TAGS: [],
-    ALLOWED_ATTR: [] 
-  });
+  // Remove HTML tags and dangerous content using simple regex
+  let sanitized = input.replace(/<[^>]*>/g, ''); // Remove all HTML tags
+
+  // Remove dangerous script content
+  sanitized = sanitized.replace(/javascript:/gi, '');
+  sanitized = sanitized.replace(/vbscript:/gi, '');
+  sanitized = sanitized.replace(/on\w+\s*=/gi, '');
 
   // Trim whitespace
   sanitized = sanitized.trim();

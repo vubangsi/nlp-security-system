@@ -11,10 +11,52 @@ class FallbackNlpAdapter {
       'cellar': 'basement',
       'loft': 'attic'
     };
+
+    // Day group mappings for schedules
+    this.dayGroups = {
+      'weekdays': ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'],
+      'weekday': ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'],
+      'weekends': ['SATURDAY', 'SUNDAY'],
+      'weekend': ['SATURDAY', 'SUNDAY'],
+      'everyday': ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'],
+      'daily': ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'],
+      'all days': ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
+    };
+
+    // Day name mappings
+    this.dayMappings = {
+      'monday': 'MONDAY', 'mon': 'MONDAY',
+      'tuesday': 'TUESDAY', 'tue': 'TUESDAY', 'tues': 'TUESDAY',
+      'wednesday': 'WEDNESDAY', 'wed': 'WEDNESDAY',
+      'thursday': 'THURSDAY', 'thu': 'THURSDAY', 'thur': 'THURSDAY', 'thurs': 'THURSDAY',
+      'friday': 'FRIDAY', 'fri': 'FRIDAY',
+      'saturday': 'SATURDAY', 'sat': 'SATURDAY',
+      'sunday': 'SUNDAY', 'sun': 'SUNDAY'
+    };
+
+    // Time patterns
+    this.timePatterns = {
+      time12Hour: /\b(\d{1,2})\s*(am|pm)\b/i,
+      time12HourWithMinutes: /\b(\d{1,2}):(\d{2})\s*(am|pm)\b/i,
+      time24Hour: /\b(\d{1,2}):(\d{2})\b/,
+      timeHourOnly: /\b(\d{1,2})\s*(?:o'?clock)?\b/,
+      commonTimes: {
+        'noon': '12:00',
+        'midnight': '00:00',
+        'morning': '09:00',
+        'afternoon': '14:00', 
+        'evening': '18:00',
+        'night': '21:00'
+      }
+    };
   }
 
   interpretCommand(command) {
     const lowerCommand = command.toLowerCase();
+
+    // SCHEDULE patterns (check first as they have specific keywords)
+    const scheduleResult = this._checkSchedulePatterns(lowerCommand);
+    if (scheduleResult) return scheduleResult;
 
     // LIST_ZONES patterns (check first to avoid conflicts with ARM_ZONE)
     const listZonesResult = this._checkListZonesPatterns(lowerCommand);
@@ -29,8 +71,10 @@ class FallbackNlpAdapter {
     if (armZoneResult) return armZoneResult;
 
     // DISARM_SYSTEM patterns (including "sesame open") - check after zone patterns
+    // Exclude commands with time patterns to avoid conflicts with schedule commands
     if (/disarm.*system|deactivate.*security|turn.*off.*alarm|sesame.*open/i.test(lowerCommand) && 
-        !this._containsZoneReference(lowerCommand)) {
+        !this._containsZoneReference(lowerCommand) &&
+        !/\b(?:at|@)\s+\d/i.test(lowerCommand)) { // Exclude commands with "at [time]" patterns
       // Only match if no zone is mentioned
       if (/\b(unlock|unsecure)\b/i.test(lowerCommand) && !this._containsZoneReference(lowerCommand)) {
         return {
@@ -49,7 +93,8 @@ class FallbackNlpAdapter {
     }
 
     // ARM_SYSTEM patterns (including "sesame close") - check after zone patterns
-    if (/arm.*system|activate.*security|turn.*on.*alarm|sesame.*close/i.test(lowerCommand) && 
+    // Use word boundaries to prevent matching "disarm system" as "arm system"
+    if (/\barm.*system|activate.*security|turn.*on.*alarm|sesame.*close/i.test(lowerCommand) && 
         !this._containsZoneReference(lowerCommand)) {
       const modeMatch = lowerCommand.match(/\b(away|stay)\b/);
       const mode = modeMatch ? modeMatch[1] : 'away';
@@ -464,6 +509,426 @@ class FallbackNlpAdapter {
     
     const lowerCommand = command.toLowerCase();
     return zoneKeywords.some(keyword => lowerCommand.includes(keyword));
+  }
+
+  // ===== SCHEDULE DETECTION METHODS =====
+
+  _checkSchedulePatterns(command) {
+    // Check for schedule creation patterns first
+    const scheduleArmResult = this._checkScheduleArmPatterns(command);
+    if (scheduleArmResult) return scheduleArmResult;
+
+    const scheduleDisarmResult = this._checkScheduleDisarmPatterns(command);
+    if (scheduleDisarmResult) return scheduleDisarmResult;
+
+    // Check for schedule management patterns - ORDER MATTERS: more specific first
+    const cancelScheduleResult = this._checkCancelSchedulePatterns(command);
+    if (cancelScheduleResult) return cancelScheduleResult;
+
+    const updateScheduleResult = this._checkUpdateSchedulePatterns(command);
+    if (updateScheduleResult) return updateScheduleResult;
+
+    const listSchedulesResult = this._checkListSchedulesPatterns(command);
+    if (listSchedulesResult) return listSchedulesResult;
+
+    return null;
+  }
+
+  _checkScheduleArmPatterns(command) {
+    // Primary schedule arm patterns
+    const scheduleArmPatterns = [
+      /(?:schedule|set up?|create)\s+(?:arm|arming).*?(?:for|on)\s+(.*?)(?:\s+at|@)\s+(.+)/i,
+      /(?:schedule|set up?)\s+(?:for|on)\s+(.*?)(?:\s+at|@)\s+(.+)/i, // "schedule for weekends at 10 PM"
+      /(?:arm|activate).*?system.*?(?:on|every)\s+(.*?)(?:\s+at|@)\s+(.+)/i,
+      /(?:set|schedule).*?system.*?(?:to\s+)?arm.*?(?:on|every)\s+(.*?)(?:\s+at|@)\s+(.+)/i,
+      /(?:arm|activate).*?(?:on|every)\s+(.*?)(?:\s+at|@)\s+(.+)/i,
+      /(?:arm)\s+(everyday|weekdays?|weekends?)\s+(?:at|@)\s+(.+)/i // "arm everyday at 11:30 PM"
+    ];
+
+    for (const pattern of scheduleArmPatterns) {
+      const match = command.match(pattern);
+      if (match) {
+        try {
+          let daysText, timeText;
+          
+          // Handle "arm everyday at 11:30 PM" pattern specifically
+          if (pattern.source.includes('everyday|weekdays?|weekends?')) {
+            daysText = match[1].trim(); // everyday/weekdays/weekends
+            timeText = match[2].trim(); // time part
+          } else if (match.length === 2) {
+            // Pattern has combined days and time
+            const atMatch = match[1].match(/(.*?)(?:\s+at|@)\s+(.+)/i);
+            if (atMatch) {
+              daysText = atMatch[1].trim();
+              timeText = atMatch[2].trim();
+            } else {
+              continue; // Skip this pattern if we can't parse it properly
+            }
+          } else {
+            daysText = match[1].trim();
+            timeText = match[2].trim();
+          }
+
+          const days = this._extractDaysFromText(daysText);
+          const time = this._extractTimeFromText(timeText);
+          const mode = this._extractModeFromText(command);
+
+          if (days.length > 0 && time) {
+            return {
+              success: true,
+              intent: 'SCHEDULE_ARM_SYSTEM',
+              entities: {
+                days,
+                time,
+                action: 'ARM',
+                mode,
+                zoneIds: []
+              },
+              confidence: 0.85
+            };
+          }
+        } catch (error) {
+          continue; // Try next pattern if parsing fails
+        }
+      }
+    }
+
+    return null;
+  }
+
+  _checkScheduleDisarmPatterns(command) {
+    // Primary schedule disarm patterns
+    const scheduleDisarmPatterns = [
+      /(?:schedule|set up?|create)\s+(?:disarm|disarming).*?(?:for|on)\s+(.*?)(?:\s+at|@)\s+(.+)/i,
+      /(?:schedule|set up?)\s+(?:disarming).*?(?:for|on)\s+(.*?)(?:\s+at|@)\s+(.+)/i,
+      /(?:disarm|deactivate).*?system.*?(?:on|every)\s+(.*?)(?:\s+at|@)\s+(.+)/i,
+      /(?:set|schedule).*?system.*?(?:to\s+)?disarm.*?(?:on|every)\s+(.*?)(?:\s+at|@)\s+(.+)/i,
+      /(?:disarm|deactivate).*?(?:on|every)\s+(.*?)(?:\s+at|@)\s+(.+)/i,
+      /(?:disarm)\s+system\s+(?:at|@)\s+(.+)/i // "disarm system at 7 AM"
+    ];
+
+    for (let i = 0; i < scheduleDisarmPatterns.length; i++) {
+      const pattern = scheduleDisarmPatterns[i];
+      const match = command.match(pattern);
+      if (match) {
+        try {
+          let daysText = '', timeText;
+          
+          // Handle "disarm system at 7 AM" pattern (last pattern) - only time, no specific days
+          if (i === scheduleDisarmPatterns.length - 1) {
+            daysText = 'everyday'; // default to everyday if no days specified
+            timeText = match[1].trim();
+          } else if (match.length === 2) {
+            // Pattern has combined days and time
+            const atMatch = match[1].match(/(.*?)(?:\s+at|@)\s+(.+)/i);
+            if (atMatch) {
+              daysText = atMatch[1].trim();
+              timeText = atMatch[2].trim();
+            } else {
+              continue;
+            }
+          } else {
+            daysText = match[1].trim();
+            timeText = match[2].trim();
+          }
+
+          const days = this._extractDaysFromText(daysText);
+          const time = this._extractTimeFromText(timeText);
+
+          if (days.length > 0 && time) {
+            return {
+              success: true,
+              intent: 'SCHEDULE_DISARM_SYSTEM',
+              entities: {
+                days,
+                time,
+                action: 'DISARM',
+                zoneIds: []
+              },
+              confidence: 0.85
+            };
+          }
+        } catch (error) {
+          continue;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  _checkListSchedulesPatterns(command) {
+    const listSchedulePatterns = [
+      /(?:show|list|display|get).*?(?:my\s+)?(?:schedules?|scheduled?\s+tasks?)/i,
+      /(?:what|which)\s+schedules?.*?(?:active|set|running)/i,
+      /(?:schedules?\s+list|all\s+schedules?)/i
+    ];
+
+    for (const pattern of listSchedulePatterns) {
+      if (pattern.test(command)) {
+        const entities = {};
+        
+        // Check for filter types
+        if (/\b(?:active|running|enabled)\b/i.test(command)) {
+          entities.filterType = 'active';
+        } else if (/\b(?:inactive|disabled|paused)\b/i.test(command)) {
+          entities.filterType = 'inactive';
+        } else if (/\btoday\b/i.test(command)) {
+          entities.filterType = 'today';
+        } else if (/\b(?:this\s+)?week\b/i.test(command)) {
+          entities.filterType = 'week';
+        }
+
+        // Check for schedule type
+        if (/\b(?:arm|arming)\b/i.test(command) && !/\b(?:disarm|disarming)\b/i.test(command)) {
+          entities.scheduleType = 'arm';
+        } else if (/\b(?:disarm|disarming)\b/i.test(command) && !/\b(?:arm|arming)\b/i.test(command)) {
+          entities.scheduleType = 'disarm';
+        } else {
+          entities.scheduleType = 'all';
+        }
+
+        return {
+          success: true,
+          intent: 'LIST_SCHEDULES',
+          entities,
+          confidence: 0.8
+        };
+      }
+    }
+
+    return null;
+  }
+
+  _checkCancelSchedulePatterns(command) {
+    const cancelSchedulePatterns = [
+      /(?:cancel|remove|delete).*?(?:schedule|scheduled?\s+task|scheduling)/i,
+      /(?:stop|turn\s+off).*?(?:scheduling|schedules?)/i,
+      /(?:clear|remove|delete).*?(?:all\s+)?schedules?/i
+    ];
+
+    for (const pattern of cancelSchedulePatterns) {
+      if (pattern.test(command)) {
+        const entities = {};
+
+        // Check if canceling all schedules
+        if (/\b(?:all|every|entire)\s+(?:schedules?|scheduled?\s+tasks?)\b/i.test(command) ||
+            /(?:delete|remove|clear)\s+all\s+schedules?/i.test(command)) {
+          entities.deleteAll = true;
+        }
+
+        // Try to extract specific days
+        const days = this._extractDaysFromText(command);
+        if (days.length > 0) {
+          entities.days = days;
+        }
+
+        // Check for schedule type
+        if (/\b(?:arm|arming)\b/i.test(command) && !/\b(?:disarm|disarming)\b/i.test(command)) {
+          entities.scheduleType = 'arm';
+        } else if (/\b(?:disarm|disarming)\b/i.test(command) && !/\b(?:arm|arming)\b/i.test(command)) {
+          entities.scheduleType = 'disarm';
+        } else {
+          entities.scheduleType = 'all';
+        }
+
+        return {
+          success: true,
+          intent: 'CANCEL_SCHEDULE',
+          entities,
+          confidence: 0.8
+        };
+      }
+    }
+
+    return null;
+  }
+
+  _checkUpdateSchedulePatterns(command) {
+    const updateSchedulePatterns = [
+      /(?:change|update|modify).*?schedule.*?(?:to|at)\s+(.+)/i,
+      /(?:reschedule|move).*?(?:to|at)\s+(.+)/i,
+      /(?:set|change).*?(?:schedule|time).*?(?:to|at)\s+(.+)/i
+    ];
+
+    for (const pattern of updateSchedulePatterns) {
+      const match = command.match(pattern);
+      if (match) {
+        try {
+          const entities = {};
+          
+          // Try to extract days from the beginning of the command
+          const days = this._extractDaysFromText(command);
+          if (days.length > 0) {
+            entities.days = days;
+          }
+
+          // Extract new time from the match
+          const time = this._extractTimeFromText(match[1]);
+          if (time) {
+            entities.newTime = time;
+          }
+
+          // Extract new mode if present
+          const mode = this._extractModeFromText(match[1]);
+          if (mode !== 'away') { // Only include if not default
+            entities.newMode = mode;
+          }
+
+          // Check if changing action type
+          if (/\b(?:arm|arming)\b/i.test(match[1])) {
+            entities.newAction = 'ARM';
+          } else if (/\b(?:disarm|disarming)\b/i.test(match[1])) {
+            entities.newAction = 'DISARM';
+          }
+
+          if (time || Object.keys(entities).length > 0) {
+            return {
+              success: true,
+              intent: 'UPDATE_SCHEDULE',
+              entities,
+              confidence: 0.8
+            };
+          }
+        } catch (error) {
+          continue;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  // ===== HELPER METHODS FOR SCHEDULE PARSING =====
+
+  _extractDaysFromText(text) {
+    const days = [];
+    const lowerText = text.toLowerCase();
+
+    // Check for day groups first
+    for (const [groupName, groupDays] of Object.entries(this.dayGroups)) {
+      if (lowerText.includes(groupName)) {
+        days.push(...groupDays);
+      }
+    }
+
+    // Remove duplicates and return if we found day groups
+    if (days.length > 0) {
+      return [...new Set(days)];
+    }
+
+    // Check for specific days
+    for (const [dayName, dayCode] of Object.entries(this.dayMappings)) {
+      if (new RegExp(`\\b${dayName}\\b`).test(lowerText)) {
+        days.push(dayCode);
+      }
+    }
+
+    // Handle comma-separated and "and" patterns
+    if (lowerText.includes(',') || lowerText.includes(' and ')) {
+      const parts = lowerText.split(/[,\s]+and\s+|,\s*/);
+      for (const part of parts) {
+        const trimmedPart = part.trim();
+        for (const [dayName, dayCode] of Object.entries(this.dayMappings)) {
+          if (new RegExp(`\\b${dayName}\\b`).test(trimmedPart)) {
+            days.push(dayCode);
+          }
+        }
+      }
+    }
+
+    return [...new Set(days)]; // Remove duplicates
+  }
+
+  _extractTimeFromText(text) {
+    const lowerText = text.toLowerCase().trim();
+
+    // Check common time expressions first
+    for (const [expr, time] of Object.entries(this.timePatterns.commonTimes)) {
+      if (lowerText.includes(expr)) {
+        return time;
+      }
+    }
+
+    // Try 12-hour format with minutes (e.g., "9:30 PM")
+    let match = text.match(this.timePatterns.time12HourWithMinutes);
+    if (match) {
+      const hour = parseInt(match[1], 10);
+      const minute = parseInt(match[2], 10);
+      const meridiem = match[3].toUpperCase();
+      
+      let finalHour = hour;
+      if (meridiem === 'AM') {
+        if (hour === 12) finalHour = 0; // 12 AM = 00:00
+      } else { // PM
+        if (hour !== 12) finalHour += 12; // 1 PM = 13:00, but 12 PM = 12:00
+      }
+      
+      return `${finalHour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+    }
+
+    // Try 12-hour format without minutes (e.g., "9 PM")
+    match = text.match(this.timePatterns.time12Hour);
+    if (match) {
+      const hour = parseInt(match[1], 10);
+      const meridiem = match[2].toUpperCase();
+      
+      let finalHour = hour;
+      if (meridiem === 'AM') {
+        if (hour === 12) finalHour = 0; // 12 AM = 00:00
+      } else { // PM
+        if (hour !== 12) finalHour += 12; // 1 PM = 13:00, but 12 PM = 12:00
+      }
+      
+      return `${finalHour.toString().padStart(2, '0')}:00`;
+    }
+
+    // Try 24-hour format (e.g., "21:30")
+    match = text.match(this.timePatterns.time24Hour);
+    if (match) {
+      const hour = parseInt(match[1], 10);
+      const minute = parseInt(match[2], 10);
+      
+      if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+        return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      }
+    }
+
+    // Try hour only (make educated guess based on context)
+    match = text.match(this.timePatterns.timeHourOnly);
+    if (match) {
+      const hour = parseInt(match[1], 10);
+      
+      if (hour > 12 && hour <= 23) {
+        // Clearly 24-hour format
+        return `${hour.toString().padStart(2, '0')}:00`;
+      } else if (hour >= 1 && hour <= 12) {
+        // Ambiguous - use heuristics
+        if (hour >= 6 && hour <= 11) {
+          // Morning hours likely AM
+          const finalHour = hour === 12 ? 0 : hour;
+          return `${finalHour.toString().padStart(2, '0')}:00`;
+        } else {
+          // Afternoon/evening hours likely PM
+          const finalHour = hour === 12 ? 12 : hour + 12;
+          return `${finalHour.toString().padStart(2, '0')}:00`;
+        }
+      }
+    }
+
+    return null; // Could not parse time
+  }
+
+  _extractModeFromText(text) {
+    const lowerText = text.toLowerCase();
+    
+    if (/\b(?:stay|home)\b/.test(lowerText)) {
+      return 'stay';
+    } else if (/\baway\b/.test(lowerText)) {
+      return 'away';
+    }
+    
+    return 'away'; // Default mode
   }
 }
 

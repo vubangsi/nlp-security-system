@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import LoginPage from './pages/LoginPage';
 import CommandPage from './pages/CommandPage';
 import DashboardPage from './pages/DashboardPage';
+import SchedulePage from './pages/SchedulePage';
 import './App.css';
 
 function App() {
@@ -39,6 +40,10 @@ function App() {
           <Route
             path="/command"
             element={token ? <CommandPage /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/schedule"
+            element={token ? <SchedulePage /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/dashboard"

@@ -1,0 +1,1070 @@
+openapi: 3.0.3
+info:
+  title: Schedule Management API
+  description: |
+    Comprehensive REST API for schedule management in the NLP Security System.
+    Provides endpoints for creating, managing, and executing scheduled security tasks.
+    
+    All endpoints require authentication via JWT token in the Authorization header.
+    CSRF protection is enabled for all state-changing operations.
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@nlp-security.com
+
+servers:
+  - url: http://localhost:3000/api
+    description: Development server
+  - url: https://api.nlp-security.com/api
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+paths:
+  /schedules:
+    post:
+      summary: Create new scheduled task
+      description: Creates a new scheduled task with specified expression and action type
+      tags:
+        - Schedule Management
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateScheduleRequest'
+            examples:
+              weeklyArm:
+                summary: Weekly ARM schedule
+                value:
+                  scheduleExpression: "weekdays at 9 PM"
+                  actionType: "ARM"
+                  actionParameters:
+                    mode: "AWAY"
+                  description: "Arm system on weekdays at 9 PM"
+                  enabled: true
+              cronDisarm:
+                summary: Cron-based DISARM schedule
+                value:
+                  scheduleExpression: "0 7 * * 1-5"
+                  actionType: "DISARM"
+                  description: "Disarm system weekdays at 7 AM"
+      responses:
+        '201':
+          description: Schedule created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Schedule'
+        '400':
+          description: Bad request - validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - schedule already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Unprocessable entity - invalid schedule expression
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitResponse'
+
+    get:
+      summary: List user's scheduled tasks
+      description: Lists scheduled tasks with optional filtering and pagination
+      tags:
+        - Schedule Management
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [PENDING, ACTIVE, COMPLETED, CANCELLED]
+          description: Filter by schedule status
+        - in: query
+          name: actionType
+          schema:
+            type: string
+            enum: [ARM, DISARM]
+          description: Filter by action type
+        - in: query
+          name: enabled
+          schema:
+            type: boolean
+          description: Filter by enabled status
+        - in: query
+          name: upcoming
+          schema:
+            type: boolean
+          description: Show only upcoming schedules
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          description: Limit number of results
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Skip number of results for pagination
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+            enum: [createdAt, nextExecution, status, actionType]
+            default: createdAt
+          description: Sort field
+        - in: query
+          name: sortOrder
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+          description: Sort order
+        - in: query
+          name: includeAllUsers
+          schema:
+            type: boolean
+            default: false
+          description: Include all users' schedules (admin only)
+      responses:
+        '200':
+          description: Successfully retrieved schedules
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Schedule'
+                      meta:
+                        $ref: '#/components/schemas/PaginationMeta'
+
+  /schedules/{id}:
+    get:
+      summary: Get specific scheduled task details
+      description: Retrieves detailed information about a specific scheduled task
+      tags:
+        - Schedule Management
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Schedule ID
+      responses:
+        '200':
+          description: Successfully retrieved schedule
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ScheduleDetails'
+        '404':
+          description: Schedule not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not authorized to access this schedule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Update existing scheduled task
+      description: Updates an existing scheduled task
+      tags:
+        - Schedule Management
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Schedule ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateScheduleRequest'
+      responses:
+        '200':
+          description: Schedule updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Schedule'
+        '404':
+          description: Schedule not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not authorized to update this schedule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Cancel/delete scheduled task
+      description: Cancels or deletes a scheduled task
+      tags:
+        - Schedule Management
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Schedule ID
+      responses:
+        '200':
+          description: Schedule deleted successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          impactAnalysis:
+                            $ref: '#/components/schemas/ImpactAnalysis'
+        '404':
+          description: Schedule not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /schedules/bulk:
+    post:
+      summary: Create multiple schedules
+      description: Creates multiple schedules in a single request
+      tags:
+        - Bulk Operations
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkCreateScheduleRequest'
+      responses:
+        '201':
+          description: All schedules created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkOperationResponse'
+        '207':
+          description: Multi-status - partial success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkOperationResponse'
+
+    delete:
+      summary: Cancel multiple schedules
+      description: Cancels multiple schedules based on IDs or criteria
+      tags:
+        - Bulk Operations
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkDeleteScheduleRequest'
+      responses:
+        '200':
+          description: Bulk deletion completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkDeleteResponse'
+
+    put:
+      summary: Update multiple schedules
+      description: Updates multiple schedules in a single request
+      tags:
+        - Bulk Operations
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkUpdateScheduleRequest'
+      responses:
+        '200':
+          description: All updates completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkOperationResponse'
+        '207':
+          description: Multi-status - partial success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkOperationResponse'
+
+  /schedules/statistics:
+    get:
+      summary: Get schedule statistics
+      description: Returns statistics about user's schedules
+      tags:
+        - Analytics
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: includeAllUsers
+          schema:
+            type: boolean
+            default: false
+          description: Include all users' statistics (admin only)
+      responses:
+        '200':
+          description: Successfully retrieved statistics
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ScheduleStatistics'
+
+  /schedules/upcoming:
+    get:
+      summary: Get upcoming schedule executions
+      description: Returns upcoming schedule executions within specified timeframe
+      tags:
+        - Analytics
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: days
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 30
+            default: 7
+          description: Number of days ahead to look
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+          description: Limit number of results
+        - in: query
+          name: includeAllUsers
+          schema:
+            type: boolean
+            default: false
+          description: Include all users' schedules (admin only)
+      responses:
+        '200':
+          description: Successfully retrieved upcoming schedules
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/UpcomingSchedule'
+
+  /schedules/test:
+    post:
+      summary: Test schedule expression
+      description: Tests and validates a schedule expression without creating a schedule
+      tags:
+        - Testing
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestScheduleRequest'
+      responses:
+        '200':
+          description: Schedule expression is valid
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ParsedSchedule'
+        '422':
+          description: Invalid schedule expression
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/schedules:
+    get:
+      summary: Admin view of all schedules
+      description: Lists all schedules in the system (admin only)
+      tags:
+        - Admin Operations
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AdminScheduleFilters'
+      responses:
+        '200':
+          description: Successfully retrieved all schedules
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AdminScheduleView'
+
+  /admin/schedules/execute/{id}:
+    post:
+      summary: Manually execute schedule
+      description: Manually executes a schedule for testing or emergency purposes (admin only)
+      tags:
+        - Admin Operations
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Schedule ID
+      responses:
+        '200':
+          description: Schedule executed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ExecutionResult'
+
+  /admin/schedules/health:
+    get:
+      summary: Get scheduler health status
+      description: Returns the health status of the scheduling engine (admin only)
+      tags:
+        - Admin Operations
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Scheduler is healthy
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SchedulerHealth'
+        '503':
+          description: Scheduler is unhealthy
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SchedulerHealth'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    AdminScheduleFilters:
+      name: filters
+      in: query
+      description: Various filters for admin schedule listing
+      schema:
+        type: object
+        properties:
+          userId:
+            type: string
+            description: Filter by specific user ID
+          status:
+            type: string
+            enum: [PENDING, ACTIVE, COMPLETED, CANCELLED]
+          actionType:
+            type: string
+            enum: [ARM, DISARM]
+
+  schemas:
+    SuccessResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          description: Success message
+
+    ErrorResponse:
+      type: object
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          description: Error message
+        error:
+          type: string
+          description: Error code
+        errors:
+          type: object
+          description: Field-specific validation errors
+
+    RateLimitResponse:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            retryAfter:
+              type: string
+              description: When to retry the request
+
+    CreateScheduleRequest:
+      type: object
+      required:
+        - scheduleExpression
+        - actionType
+      properties:
+        scheduleExpression:
+          type: string
+          maxLength: 200
+          description: Natural language or cron expression
+          examples:
+            - "weekdays at 9 PM"
+            - "0 21 * * 1-5"
+            - "every Monday at 8:30 AM"
+        actionType:
+          type: string
+          enum: [ARM, DISARM]
+          description: Type of security action to perform
+        actionParameters:
+          type: object
+          description: Additional parameters for the action
+          example:
+            mode: "AWAY"
+            zones: ["living-room", "kitchen"]
+        description:
+          type: string
+          maxLength: 500
+          description: Human-readable description of the schedule
+        enabled:
+          type: boolean
+          default: true
+          description: Whether the schedule is active
+
+    UpdateScheduleRequest:
+      type: object
+      properties:
+        scheduleExpression:
+          type: string
+          maxLength: 200
+          description: New schedule expression
+        actionParameters:
+          type: object
+          description: Updated action parameters
+        description:
+          type: string
+          maxLength: 500
+          description: Updated description
+        enabled:
+          type: boolean
+          description: Enable/disable the schedule
+        status:
+          type: string
+          enum: [PENDING, ACTIVE, COMPLETED, CANCELLED]
+          description: Update status (admin only)
+
+    Schedule:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique schedule identifier
+        scheduleExpression:
+          type: string
+          description: Original schedule expression
+        actionType:
+          type: string
+          enum: [ARM, DISARM]
+        actionParameters:
+          type: object
+          description: Action parameters
+        description:
+          type: string
+          description: Schedule description
+        status:
+          type: string
+          enum: [PENDING, ACTIVE, COMPLETED, CANCELLED]
+        enabled:
+          type: boolean
+          description: Whether schedule is active
+        nextExecution:
+          type: string
+          format: date-time
+          description: Next scheduled execution time
+        lastExecution:
+          type: string
+          format: date-time
+          description: Last execution time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        userId:
+          type: string
+          description: Owner user ID
+
+    ScheduleDetails:
+      allOf:
+        - $ref: '#/components/schemas/Schedule'
+        - type: object
+          properties:
+            executionHistory:
+              type: array
+              items:
+                $ref: '#/components/schemas/ExecutionHistoryItem'
+            parsedSchedule:
+              $ref: '#/components/schemas/ParsedSchedule'
+
+    ExecutionHistoryItem:
+      type: object
+      properties:
+        executedAt:
+          type: string
+          format: date-time
+        result:
+          type: string
+          enum: [SUCCESS, FAILED, SKIPPED]
+        details:
+          type: object
+          description: Execution details
+        error:
+          type: string
+          description: Error message if failed
+
+    ParsedSchedule:
+      type: object
+      properties:
+        cronExpression:
+          type: string
+          description: Parsed cron expression
+        humanReadable:
+          type: string
+          description: Human-readable interpretation
+        nextExecutions:
+          type: array
+          items:
+            type: string
+            format: date-time
+          description: Next 5 execution times
+        timezone:
+          type: string
+          description: Timezone for execution
+
+    BulkCreateScheduleRequest:
+      type: object
+      required:
+        - schedules
+      properties:
+        schedules:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/CreateScheduleRequest'
+
+    BulkDeleteScheduleRequest:
+      type: object
+      properties:
+        scheduleIds:
+          type: array
+          maxItems: 100
+          items:
+            type: string
+          description: Specific schedule IDs to delete
+        criteria:
+          type: object
+          description: Criteria for bulk deletion
+          properties:
+            status:
+              type: string
+              enum: [PENDING, ACTIVE, COMPLETED, CANCELLED]
+            actionType:
+              type: string
+              enum: [ARM, DISARM]
+            enabled:
+              type: boolean
+            days:
+              type: array
+              items:
+                type: string
+                enum: [MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY]
+
+    BulkUpdateScheduleRequest:
+      type: object
+      required:
+        - updates
+      properties:
+        updates:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: object
+            required:
+              - id
+              - changes
+            properties:
+              id:
+                type: string
+                description: Schedule ID to update
+              changes:
+                $ref: '#/components/schemas/UpdateScheduleRequest'
+
+    BulkOperationResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                results:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      success:
+                        type: boolean
+                      error:
+                        type: string
+                      data:
+                        type: object
+                summary:
+                  type: object
+                  properties:
+                    total:
+                      type: integer
+                    successful:
+                      type: integer
+                    failed:
+                      type: integer
+
+    BulkDeleteResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                deletedCount:
+                  type: integer
+                impactAnalysis:
+                  $ref: '#/components/schemas/ImpactAnalysis'
+                errors:
+                  type: array
+                  items:
+                    type: string
+
+    ScheduleStatistics:
+      type: object
+      properties:
+        totalActive:
+          type: integer
+          description: Number of active schedules
+        upcomingToday:
+          type: integer
+          description: Number of schedules executing today
+        overdue:
+          type: integer
+          description: Number of overdue schedules
+        successRate:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+          description: Success rate percentage
+        byActionType:
+          type: object
+          properties:
+            ARM:
+              type: integer
+            DISARM:
+              type: integer
+        byStatus:
+          type: object
+          properties:
+            PENDING:
+              type: integer
+            ACTIVE:
+              type: integer
+            COMPLETED:
+              type: integer
+            CANCELLED:
+              type: integer
+
+    UpcomingSchedule:
+      type: object
+      properties:
+        scheduleId:
+          type: string
+        scheduleName:
+          type: string
+        actionType:
+          type: string
+          enum: [ARM, DISARM]
+        executionTime:
+          type: string
+          format: date-time
+        description:
+          type: string
+        userId:
+          type: string
+
+    TestScheduleRequest:
+      type: object
+      required:
+        - scheduleExpression
+      properties:
+        scheduleExpression:
+          type: string
+          maxLength: 200
+          description: Schedule expression to test
+
+    PaginationMeta:
+      type: object
+      properties:
+        count:
+          type: integer
+          description: Number of items in current page
+        total:
+          type: integer
+          description: Total number of items
+        limit:
+          type: integer
+          description: Items per page limit
+        offset:
+          type: integer
+          description: Number of items skipped
+        hasMore:
+          type: boolean
+          description: Whether there are more items
+        filters:
+          type: object
+          description: Applied filters
+        sorting:
+          type: object
+          properties:
+            sortBy:
+              type: string
+            sortOrder:
+              type: string
+
+    ImpactAnalysis:
+      type: object
+      properties:
+        affectedSchedules:
+          type: integer
+        nextMissedExecution:
+          type: string
+          format: date-time
+        relatedSchedules:
+          type: array
+          items:
+            type: string
+        warnings:
+          type: array
+          items:
+            type: string
+
+    AdminScheduleView:
+      allOf:
+        - $ref: '#/components/schemas/Schedule'
+        - type: object
+          properties:
+            userName:
+              type: string
+              description: Owner username
+            lastActivity:
+              type: string
+              format: date-time
+            executionCount:
+              type: integer
+
+    ExecutionResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        executedAt:
+          type: string
+          format: date-time
+        result:
+          type: object
+          description: Execution result details
+        duration:
+          type: integer
+          description: Execution time in milliseconds
+        schedule:
+          $ref: '#/components/schemas/Schedule'
+
+    SchedulerHealth:
+      type: object
+      properties:
+        isHealthy:
+          type: boolean
+        status:
+          type: string
+          enum: [HEALTHY, DEGRADED, UNHEALTHY]
+        activeTimers:
+          type: integer
+          description: Number of active schedule timers
+        queueSize:
+          type: integer
+          description: Number of pending executions
+        lastExecution:
+          type: string
+          format: date-time
+        uptime:
+          type: integer
+          description: Scheduler uptime in seconds
+        performance:
+          type: object
+          properties:
+            avgExecutionTime:
+              type: number
+              description: Average execution time in ms
+            successRate:
+              type: number
+              description: Success rate percentage
+            errorsInLast24h:
+              type: integer
+        issues:
+          type: array
+          items:
+            type: string
+          description: Current health issues
+
+tags:
+  - name: Schedule Management
+    description: Core schedule management operations
+  - name: Bulk Operations
+    description: Operations for managing multiple schedules
+  - name: Analytics
+    description: Schedule statistics and analytics
+  - name: Testing
+    description: Schedule testing and validation
+  - name: Admin Operations
+    description: Administrative schedule management

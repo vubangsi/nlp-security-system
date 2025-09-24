@@ -21,6 +21,13 @@ SYSTEM LEVEL:
 - DISARM_SYSTEM: Disarm the entire security system (also "sesame open", "unlock", "unsecure")
 - GET_STATUS: Get system status (also "status", "state", "check status", "system status")
 
+SCHEDULE MANAGEMENT:
+- SCHEDULE_ARM_SYSTEM: Schedule system arming ("arm the system on Monday at 10 PM", "schedule arming for Tuesday at 9:00 AM", "set system to arm weekdays at 11 PM")
+- SCHEDULE_DISARM_SYSTEM: Schedule system disarming ("disarm system at 7 AM", "schedule disarming for weekdays at morning")
+- LIST_SCHEDULES: Show all schedules ("show my schedules", "list arm schedules", "what schedules are active")
+- CANCEL_SCHEDULE: Remove schedules ("remove Monday schedule", "cancel weekend scheduling", "delete all schedules")
+- UPDATE_SCHEDULE: Modify existing schedules ("change Tuesday schedule to 11 PM", "update weekend arming to 10:30 PM")
+
 USER MANAGEMENT:
 - ADD_USER: Add a new user
 - LIST_USERS: List all users
@@ -42,6 +49,30 @@ For ARM_SYSTEM/ARM_ZONE:
 - zones: Array of zone names (for multi-zone commands like "arm living room and garage")
 - zoneName: Single zone name (for single zone commands)
 - includeChildren: true if "all", "including children", "and child zones" mentioned
+
+For SCHEDULE_ARM_SYSTEM/SCHEDULE_DISARM_SYSTEM:
+- days: Array of days ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]
+- time: Time in 24-hour format "HH:MM" (e.g., "20:00" for 8 PM, "09:30" for 9:30 AM)
+- action: "ARM" or "DISARM" 
+- mode: "away" or "stay" (for arming commands, default: "away")
+- zoneIds: Array of zone IDs if specific zones mentioned (default: [] for system-level)
+
+For LIST_SCHEDULES:
+- filterType: "active", "inactive", "today", "week" (optional filter)
+- scheduleType: "arm", "disarm", "all" (default: "all")
+
+For CANCEL_SCHEDULE:
+- scheduleId: Specific schedule ID to cancel (if mentioned)
+- days: Array of days to cancel schedules for (e.g., ["MONDAY"] for "cancel Monday schedule")
+- scheduleType: "arm", "disarm", "all" (default: "all")
+- deleteAll: true if "all schedules" or similar mentioned
+
+For UPDATE_SCHEDULE:
+- scheduleId: Specific schedule ID to update (if mentioned) 
+- days: Array of days for schedule to update
+- newTime: New time in 24-hour format "HH:MM"
+- newMode: New mode "away" or "stay" (for arm schedules)
+- newAction: "ARM" or "DISARM" if changing action type
 
 For DISARM_SYSTEM/DISARM_ZONE:
 - zones: Array of zone names for multi-zone commands
@@ -93,6 +124,13 @@ Special patterns:
 - "except [zone]" = exclude specific zones
 - "and" = multiple zones ("living room and garage")
 - "only" = single zone exclusivity ("garage only")
+
+Schedule patterns:
+- Day groups: "weekdays" = ["MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY"], "weekends" = ["SATURDAY","SUNDAY"], "everyday" = all 7 days
+- Time formats: "9 PM" = "21:00", "9:30 AM" = "09:30", "21:30" = "21:30", "noon" = "12:00", "midnight" = "00:00"
+- Schedule keywords: "schedule", "set", "arm at", "disarm at", "every", "on [day]", "at [time]"
+- Management keywords: "show schedules", "list schedules", "cancel", "remove", "delete", "update", "change"
+- Complex patterns: "arm on Monday, Wednesday, and weekends at 8 PM" = expand day groups and parse multiple days
 
 Respond with a JSON object: { "intent": "INTENT", "entities": { "entity1": "value1", ... } }`
           },

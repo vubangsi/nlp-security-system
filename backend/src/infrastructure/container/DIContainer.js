@@ -9,9 +9,16 @@ const InMemoryUserRepository = require('../persistence/InMemoryUserRepository');
 const InMemorySystemStateRepository = require('../persistence/InMemorySystemStateRepository');
 const InMemoryEventLogRepository = require('../persistence/InMemoryEventLogRepository');
 const InMemoryZoneRepository = require('../persistence/InMemoryZoneRepository');
+const InMemoryScheduledTaskRepository = require('../persistence/InMemoryScheduledTaskRepository');
 const GroqNlpAdapter = require('../adapters/GroqNlpAdapter');
 const FallbackNlpAdapter = require('../adapters/FallbackNlpAdapter');
 const eventBus = require('../eventBus/EventBus');
+
+// Scheduler Infrastructure
+const SchedulingEngine = require('../services/SchedulingEngine');
+const TaskExecutor = require('../services/TaskExecutor');
+const SchedulerBootstrap = require('../bootstrap/SchedulerBootstrap');
+const SchedulerConfig = require('../config/SchedulerConfig');
 
 // Application
 const NlpService = require('../../application/services/NlpService');
@@ -30,6 +37,11 @@ const UpdateZoneUseCase = require('../../application/useCases/UpdateZoneUseCase'
 const DeleteZoneUseCase = require('../../application/useCases/DeleteZoneUseCase');
 const ManageZoneHierarchyUseCase = require('../../application/useCases/ManageZoneHierarchyUseCase');
 const ProcessCommandUseCase = require('../../application/useCases/ProcessCommandUseCase');
+const CreateScheduledTaskUseCase = require('../../application/useCases/CreateScheduledTaskUseCase');
+const UpdateScheduledTaskUseCase = require('../../application/useCases/UpdateScheduledTaskUseCase');
+const CancelScheduledTaskUseCase = require('../../application/useCases/CancelScheduledTaskUseCase');
+const ListScheduledTasksUseCase = require('../../application/useCases/ListScheduledTasksUseCase');
+const ExecuteScheduledTaskUseCase = require('../../application/useCases/ExecuteScheduledTaskUseCase');
 const EventLogHandler = require('../../application/handlers/EventLogHandler');
 
 // Controllers
@@ -51,6 +63,7 @@ class DIContainer {
     this.register('systemStateRepository', new InMemorySystemStateRepository());
     this.register('eventLogRepository', new InMemoryEventLogRepository());
     this.register('zoneRepository', new InMemoryZoneRepository());
+    this.register('scheduledTaskRepository', new InMemoryScheduledTaskRepository());
 
     // Event Bus
     this.register('eventBus', eventBus);
@@ -147,6 +160,61 @@ class DIContainer {
       this.get('eventBus')
     ));
 
+    // Scheduled Task Use Cases
+    this.register('createScheduledTaskUseCase', new CreateScheduledTaskUseCase(
+      this.get('scheduledTaskRepository'),
+      this.get('eventLogRepository'),
+      this.get('eventBus')
+    ));
+
+    this.register('updateScheduledTaskUseCase', new UpdateScheduledTaskUseCase(
+      this.get('scheduledTaskRepository'),
+      this.get('eventLogRepository'),
+      this.get('eventBus')
+    ));
+
+    this.register('cancelScheduledTaskUseCase', new CancelScheduledTaskUseCase(
+      this.get('scheduledTaskRepository'),
+      this.get('eventLogRepository'),
+      this.get('eventBus')
+    ));
+
+    this.register('listScheduledTasksUseCase', new ListScheduledTasksUseCase(
+      this.get('scheduledTaskRepository')
+    ));
+
+    this.register('executeScheduledTaskUseCase', new ExecuteScheduledTaskUseCase(
+      this.get('scheduledTaskRepository'),
+      this.get('armSystemUseCase'),
+      this.get('disarmSystemUseCase'),
+      this.get('eventLogRepository'),
+      this.get('eventBus'),
+      this.get('systemStateRepository')
+    ));
+
+    // Scheduler Infrastructure Services
+    this.register('schedulerConfig', SchedulerConfig);
+
+    this.register('taskExecutor', new TaskExecutor(
+      this.get('executeScheduledTaskUseCase'),
+      SchedulerConfig.getTaskExecutorConfig()
+    ));
+
+    this.register('schedulingEngine', new SchedulingEngine(
+      this.get('scheduledTaskRepository'),
+      this.get('executeScheduledTaskUseCase'),
+      this.get('taskExecutor'),
+      SchedulerConfig.getSchedulingEngineConfig()
+    ));
+
+    this.register('schedulerBootstrap', new SchedulerBootstrap(
+      this.get('schedulingEngine'),
+      this.get('taskExecutor'),
+      this.get('scheduledTaskRepository'),
+      this.get('eventBus'),
+      SchedulerConfig.getBootstrapConfig()
+    ));
+
     this.register('processCommandUseCase', new ProcessCommandUseCase(
       this.get('nlpService'),
       this.get('armSystemUseCase'),
@@ -162,6 +230,7 @@ class DIContainer {
       this.get('updateZoneUseCase'),
       this.get('deleteZoneUseCase'),
       this.get('manageZoneHierarchyUseCase'),
+      this.get('scheduledTaskRepository'),
       this.get('eventLogRepository'),
       this.get('eventBus')
     ));
@@ -207,6 +276,21 @@ class DIContainer {
       systemController: this.get('systemController'),
       userController: this.get('userController'),
       zoneController: this.get('zoneController')
+    };
+  }
+
+  getSchedulerComponents() {
+    return {
+      schedulerConfig: this.get('schedulerConfig'),
+      schedulerBootstrap: this.get('schedulerBootstrap'),
+      schedulingEngine: this.get('schedulingEngine'),
+      taskExecutor: this.get('taskExecutor'),
+      scheduledTaskRepository: this.get('scheduledTaskRepository'),
+      createScheduledTaskUseCase: this.get('createScheduledTaskUseCase'),
+      updateScheduledTaskUseCase: this.get('updateScheduledTaskUseCase'),
+      cancelScheduledTaskUseCase: this.get('cancelScheduledTaskUseCase'),
+      listScheduledTasksUseCase: this.get('listScheduledTasksUseCase'),
+      executeScheduledTaskUseCase: this.get('executeScheduledTaskUseCase')
     };
   }
 }

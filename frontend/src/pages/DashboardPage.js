@@ -94,6 +94,9 @@ const DashboardPage = () => {
             <Link to="/command" className="nav-link">
               💬 Commands
             </Link>
+            <Link to="/schedule" className="nav-link">
+              ⏰ Schedules
+            </Link>
             <Link to="/dashboard" className="nav-link active">
               📊 Dashboard
             </Link>

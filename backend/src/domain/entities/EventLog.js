@@ -48,6 +48,124 @@ class EventLog {
     );
   }
 
+  static createZoneCreatedEvent(zone, userId) {
+    return new EventLog(
+      Date.now().toString(),
+      'ZONE_CREATED',
+      `Zone '${zone.name}' created`,
+      userId,
+      { 
+        zoneId: zone.id, 
+        zoneName: zone.name, 
+        description: zone.description,
+        parentZoneId: zone.parentZoneId 
+      }
+    );
+  }
+
+  static createZoneArmedEvent(zone, mode, userId) {
+    return new EventLog(
+      Date.now().toString(),
+      'ZONE_ARMED',
+      `Zone '${zone.name}' armed in ${mode} mode`,
+      userId,
+      { 
+        zoneId: zone.id, 
+        zoneName: zone.name, 
+        mode,
+        previousMode: zone.mode 
+      }
+    );
+  }
+
+  static createZoneDisarmedEvent(zone, userId) {
+    return new EventLog(
+      Date.now().toString(),
+      'ZONE_DISARMED',
+      `Zone '${zone.name}' disarmed`,
+      userId,
+      { 
+        zoneId: zone.id, 
+        zoneName: zone.name, 
+        previousMode: zone.mode 
+      }
+    );
+  }
+
+  static createZoneUpdatedEvent(zone, updates, userId) {
+    return new EventLog(
+      Date.now().toString(),
+      'ZONE_UPDATED',
+      `Zone '${zone.name}' updated`,
+      userId,
+      { 
+        zoneId: zone.id, 
+        zoneName: zone.name, 
+        updates 
+      }
+    );
+  }
+
+  static createZoneDeletedEvent(zoneState, userId, childrenHandled) {
+    return new EventLog(
+      Date.now().toString(),
+      'ZONE_DELETED',
+      `Zone '${zoneState.name}' deleted`,
+      userId,
+      { 
+        zoneId: zoneState.id, 
+        zoneName: zoneState.name, 
+        childrenHandled,
+        zoneState 
+      }
+    );
+  }
+
+  static createZoneMovedEvent(zone, oldParentZoneId, newParentZoneId, userId) {
+    return new EventLog(
+      Date.now().toString(),
+      'ZONE_MOVED',
+      `Zone '${zone.name}' moved to new parent`,
+      userId,
+      { 
+        zoneId: zone.id, 
+        zoneName: zone.name, 
+        oldParentZoneId,
+        newParentZoneId 
+      }
+    );
+  }
+
+  static createZoneParentChangedEvent(zone, oldParentZoneId, newParentZoneId, userId) {
+    return new EventLog(
+      Date.now().toString(),
+      'ZONE_PARENT_CHANGED',
+      `Zone '${zone.name}' parent changed`,
+      userId,
+      { 
+        zoneId: zone.id, 
+        zoneName: zone.name, 
+        oldParentZoneId,
+        newParentZoneId 
+      }
+    );
+  }
+
+  static createZoneHierarchyChangedEvent(zone, changeType, relatedZoneId, userId) {
+    return new EventLog(
+      Date.now().toString(),
+      'ZONE_HIERARCHY_CHANGED',
+      `Zone '${zone.name}' hierarchy changed: ${changeType}`,
+      userId,
+      { 
+        zoneId: zone.id, 
+        zoneName: zone.name, 
+        changeType,
+        relatedZoneId 
+      }
+    );
+  }
+
   toJSON() {
     return {
       id: this.id,

@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">37.03% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/27</span>
+                <span class='fraction'>10/27</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">12.5% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/8</span>
+                <span class='fraction'>1/8</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">20% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/10</span>
+                <span class='fraction'>2/10</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">38.46% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/26</span>
+                <span class='fraction'>10/26</span>
             </div>
         
             
@@ -119,8 +119,21 @@
 <a name='L54'></a><a href='#L54'>54</a>
 <a name='L55'></a><a href='#L55'>55</a>
 <a name='L56'></a><a href='#L56'>56</a>
-<a name='L57'></a><a href='#L57'>57</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<a name='L57'></a><a href='#L57'>57</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -131,19 +144,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -174,22 +174,22 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">const UserRepository = <span class="cstat-no" title="statement not covered" >require('../../domain/repositories/UserRepository');</span>
-const User = <span class="cstat-no" title="statement not covered" >require('../../domain/entities/User');</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">const UserRepository = require('../../domain/repositories/UserRepository');
+const User = require('../../domain/entities/User');
 &nbsp;
 class InMemoryUserRepository extends UserRepository {
-<span class="fstat-no" title="function not covered" >  co</span>nstructor() {
-<span class="cstat-no" title="statement not covered" >    super();</span>
-<span class="cstat-no" title="statement not covered" >    this.users = new Map();</span>
-<span class="cstat-no" title="statement not covered" >    this.initializeAdminUser();</span>
+  constructor() {
+    super();
+    this.users = new Map();
+    this.initializeAdminUser();
   }
 &nbsp;
-<span class="fstat-no" title="function not covered" >  in</span>itializeAdminUser() {
-    const adminPin = <span class="cstat-no" title="statement not covered" >process.env.ADMIN_PIN || '0000';</span>
-    const adminUser = <span class="cstat-no" title="statement not covered" >new User('admin', 'Admin', adminPin, 'admin');</span>
-<span class="cstat-no" title="statement not covered" >    this.users.set(adminUser.pin, adminUser);</span>
-<span class="cstat-no" title="statement not covered" >    this.users.set(adminUser.id, adminUser);</span>
+  initializeAdminUser() {
+    const adminPin = process.env.ADMIN_PIN || <span class="branch-1 cbranch-no" title="branch not covered" >'0000';</span>
+    const adminUser = new User('admin', 'Admin', adminPin, 'admin');
+    this.users.set(adminUser.pin, adminUser);
+    this.users.set(adminUser.id, adminUser);
   }
 &nbsp;
 <span class="fstat-no" title="function not covered" >  as</span>ync save(user) {
@@ -230,7 +230,7 @@ class InMemoryUserRepository extends UserRepository {
   }
 }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >module.exports = InMemoryUserRepository;</span>
+module.exports = InMemoryUserRepository;
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -238,7 +238,7 @@ class InMemoryUserRepository extends UserRepository {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-10T16:05:00.740Z
+                at 2025-09-23T08:24:36.150Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

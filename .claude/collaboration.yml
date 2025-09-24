@@ -1,0 +1,43 @@
+# .claude/collaboration.yaml
+project_name: "smart-home-security-system"
+collaboration_mode: "multi-agent"
+
+agents:
+  domain-architect:
+    role: "domain_expert"
+    working_dirs: ["src/domain"]
+    file_patterns: ["**/*.entity.ts", "**/*.value-object.ts", "**/*.aggregate.ts"]
+    branch_prefix: "feature/domain-agent"
+    
+  infrastructure-architect:
+    role: "infrastructure_expert"
+    working_dirs: ["src/infrastructure"]
+    file_patterns: ["**/*.repository.ts", "**/*.adapter.ts", "**/*.config.ts"]
+    branch_prefix: "feature/infrastructure-agent"
+    
+  application-orchestrator:
+    role: "application_expert"
+    working_dirs: ["src/application"]
+    file_patterns: ["**/*.use-case.ts", "**/*.application-service.ts"]
+    branch_prefix: "feature/app-agent"
+
+collaboration_rules:
+  review_requirements:
+    minimum_reviewers: 2
+    security_review_mandatory: true
+    testing_coverage_threshold: 80
+    
+  integration_gates:
+    - all_tests_pass
+    - security_scans_pass
+    - performance_benchmarks_met
+    
+  communication_channels:
+    - pull_requests
+    - shared_documentation
+    - integration_tests
+
+daily_workflow:
+  morning_sync: "09:00"
+  midday_integration: "13:00"
+  evening_quality_check: "17:00"

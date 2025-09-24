@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">61.53% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/13</span>
+                <span class='fraction'>8/13</span>
             </div>
         
             
@@ -37,16 +37,16 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">28.57% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/7</span>
+                <span class='fraction'>2/7</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">61.53% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/13</span>
+                <span class='fraction'>8/13</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line medium'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -107,30 +107,26 @@
 <a name='L42'></a><a href='#L42'>42</a>
 <a name='L43'></a><a href='#L43'>43</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -147,15 +143,19 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">class EventLogHandler {
-<span class="fstat-no" title="function not covered" >  co</span>nstructor(eventBus) {
-<span class="cstat-no" title="statement not covered" >    this.eventBus = eventBus;</span>
-<span class="cstat-no" title="statement not covered" >    this.setupEventListeners();</span>
+  constructor(eventBus) {
+    this.eventBus = eventBus;
+    this.setupEventListeners();
   }
 &nbsp;
-<span class="fstat-no" title="function not covered" >  se</span>tupEventListeners() {
+  setupEventListeners() {
     // Log all domain events
-<span class="cstat-no" title="statement not covered" >    this.eventBus.subscribeToAll(<span class="fstat-no" title="function not covered" >(e</span>vent) =&gt; {</span>
+    this.eventBus.subscribeToAll(<span class="fstat-no" title="function not covered" >(e</span>vent) =&gt; {
 <span class="cstat-no" title="statement not covered" >      console.log(`[EVENT] ${event.eventType}:`, {</span>
         eventId: event.eventId,
         aggregateId: event.aggregateId,
@@ -165,10 +165,10 @@
     });
 &nbsp;
     // Specific event handlers can be added here
-<span class="cstat-no" title="statement not covered" >    this.eventBus.subscribe('SystemArmed', this.handleSystemArmed.bind(this));</span>
-<span class="cstat-no" title="statement not covered" >    this.eventBus.subscribe('SystemDisarmed', this.handleSystemDisarmed.bind(this));</span>
-<span class="cstat-no" title="statement not covered" >    this.eventBus.subscribe('UserAdded', this.handleUserAdded.bind(this));</span>
-<span class="cstat-no" title="statement not covered" >    this.eventBus.subscribe('CommandProcessed', this.handleCommandProcessed.bind(this));</span>
+    this.eventBus.subscribe('SystemArmed', this.handleSystemArmed.bind(this));
+    this.eventBus.subscribe('SystemDisarmed', this.handleSystemDisarmed.bind(this));
+    this.eventBus.subscribe('UserAdded', this.handleUserAdded.bind(this));
+    this.eventBus.subscribe('CommandProcessed', this.handleCommandProcessed.bind(this));
   }
 &nbsp;
 <span class="fstat-no" title="function not covered" >  ha</span>ndleSystemArmed(event) {
@@ -188,7 +188,7 @@
   }
 }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >module.exports = EventLogHandler;</span>
+module.exports = EventLogHandler;
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -196,7 +196,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-10T16:05:00.740Z
+                at 2025-09-23T08:24:36.150Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiService } from '../services/apiService';
 import { clearAuthData } from '../utils/auth';
+import ZoneStatus from '../components/ZoneStatus';
 
 const CommandPage = () => {
   const [command, setCommand] = useState('');
@@ -11,6 +12,9 @@ const CommandPage = () => {
   const [history, setHistory] = useState([]);
   const [systemState, setSystemState] = useState(null);
   const [lastResult, setLastResult] = useState(null);
+  const [zones, setZones] = useState([]);
+  const [zonesLoading, setZonesLoading] = useState(false);
+  const [zonesError, setZonesError] = useState('');
   const navigate = useNavigate();
   const userRole = localStorage.getItem('userRole');
 
@@ -21,8 +25,9 @@ const CommandPage = () => {
       setHistory(JSON.parse(savedHistory));
     }
 
-    // Load system state
+    // Load system state and zones
     fetchSystemState();
+    fetchZones();
   }, []);
 
   const fetchSystemState = async (forceRefresh = false) => {
@@ -33,6 +38,39 @@ const CommandPage = () => {
       }
     } catch (err) {
       console.error('Failed to fetch system state:', err);
+    }
+  };
+
+  const fetchZones = async () => {
+    setZonesLoading(true);
+    try {
+      const response = await apiService.getZones();
+      setZones(response.zones || []);
+      setZonesError('');
+    } catch (err) {
+      setZonesError(err.response?.data?.message || 'Failed to load zones');
+    } finally {
+      setZonesLoading(false);
+    }
+  };
+
+  const handleZoneAction = async (zoneId, action, mode = 'home') => {
+    try {
+      if (action === 'arm') {
+        await apiService.armZone(zoneId, mode);
+        setSuccess(`Zone armed in ${mode} mode`);
+      } else if (action === 'disarm') {
+        await apiService.disarmZone(zoneId);
+        setSuccess('Zone disarmed successfully');
+      }
+      
+      // Refresh zones and system state
+      await Promise.all([fetchZones(), fetchSystemState(true)]);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.response?.data?.message || `Failed to ${action} zone`);
     }
   };
 
@@ -64,9 +102,9 @@ const CommandPage = () => {
       setLastResult(result);
       setSuccess(result.result?.message || 'Command executed successfully');
 
-      // Refresh system state after command with a small delay to ensure backend processing is complete
+      // Refresh system state and zones after command with a small delay to ensure backend processing is complete
       setTimeout(async () => {
-        await fetchSystemState(true); // Force refresh
+        await Promise.all([fetchSystemState(true), fetchZones()]); // Force refresh
       }, 100);
     } catch (err) {
       setError(err.response?.data?.message || 'Command failed');
@@ -131,6 +169,19 @@ const CommandPage = () => {
         </div>
       )}
 
+      {/* Zone Status */}
+      {zones.length > 0 && (
+        <div className="card">
+          <h3>🏠 Zone Status</h3>
+          <ZoneStatus 
+            zones={zones}
+            loading={zonesLoading}
+            error={zonesError}
+            onZoneAction={handleZoneAction}
+          />
+        </div>
+      )}
+
       {/* Two Column Layout */}
       <div className="command-interface-grid">
         {/* Left Column - Command Input */}
@@ -176,14 +227,35 @@ const CommandPage = () => {
 
             <div style={{ marginTop: '30px', fontSize: '14px', color: '#666' }}>
               <p><strong>💡 Example commands:</strong></p>
-              <ul style={{ textAlign: 'left', paddingLeft: '20px', lineHeight: '1.6' }}>
-                <li>"sesame close" (arm system)</li>
-                <li>"sesame open" (disarm system)</li>
-                <li>"arm the system in away mode"</li>
-                <li>"disarm the system"</li>
-                <li>"add user Alice with pin 5678"</li>
-                <li>"list all users"</li>
-              </ul>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginTop: '15px' }}>
+                <div>
+                  <p><strong>🛡️ System Commands:</strong></p>
+                  <ul style={{ textAlign: 'left', paddingLeft: '20px', lineHeight: '1.6' }}>
+                    <li>"sesame close" (arm system)</li>
+                    <li>"sesame open" (disarm system)</li>
+                    <li>"arm the system in away mode"</li>
+                    <li>"disarm the system"</li>
+                  </ul>
+                </div>
+                <div>
+                  <p><strong>🏠 Zone Commands:</strong></p>
+                  <ul style={{ textAlign: 'left', paddingLeft: '20px', lineHeight: '1.6' }}>
+                    <li>"arm living room zone"</li>
+                    <li>"disarm front door zone"</li>
+                    <li>"arm bedroom in night mode"</li>
+                    <li>"show zone status"</li>
+                  </ul>
+                </div>
+                <div>
+                  <p><strong>👥 User Commands:</strong></p>
+                  <ul style={{ textAlign: 'left', paddingLeft: '20px', lineHeight: '1.6' }}>
+                    <li>"add user Alice with pin 5678"</li>
+                    <li>"list all users"</li>
+                    <li>"create zone bedroom upstairs"</li>
+                    <li>"delete zone garage"</li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
         </div>

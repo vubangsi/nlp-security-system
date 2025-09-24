@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiService } from '../services/apiService';
 import { clearAuthData } from '../utils/auth';
+import ZoneManagement from '../components/ZoneManagement';
 
 const DashboardPage = () => {
   const [users, setUsers] = useState([]);
@@ -12,7 +13,9 @@ const DashboardPage = () => {
   const [newUserName, setNewUserName] = useState('');
   const [newUserPin, setNewUserPin] = useState('');
   const [addingUser, setAddingUser] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'users', 'zones'
   const navigate = useNavigate();
+  const userRole = localStorage.getItem('userRole');
 
   useEffect(() => {
     loadDashboardData();
@@ -103,129 +106,178 @@ const DashboardPage = () => {
 
       {error && <div className="error">{error}</div>}
 
-      {/* System Status */}
-      <div className="system-status">
-        <div className="status-item">
-          <h3>System Status</h3>
-          <div className={`status-value ${systemState.armed ? 'status-armed' : 'status-disarmed'}`}>
-            {systemState.armed ? 'ARMED' : 'DISARMED'}
-          </div>
-          {systemState.armed && systemState.mode && (
-            <div style={{ fontSize: '14px', marginTop: '5px' }}>
-              Mode: {systemState.mode.toUpperCase()}
-            </div>
-          )}
-        </div>
-        
-        <div className="status-item">
-          <h3>Total Users</h3>
-          <div className="status-value">{users?.length || 0}</div>
-        </div>
-
-        <div className="status-item">
-          <h3>Event Logs</h3>
-          <div className="status-value">{eventLogs?.length || 0}</div>
-        </div>
+      {/* Dashboard Tabs */}
+      <div className="dashboard-tabs">
+        <button 
+          className={`tab-button ${activeTab === 'overview' ? 'active' : ''}`}
+          onClick={() => setActiveTab('overview')}
+        >
+          <span role="img" aria-label="overview">📊</span>
+          Overview
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'users' ? 'active' : ''}`}
+          onClick={() => setActiveTab('users')}
+        >
+          <span role="img" aria-label="users">👥</span>
+          Users
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'zones' ? 'active' : ''}`}
+          onClick={() => setActiveTab('zones')}
+        >
+          <span role="img" aria-label="zones">🏠</span>
+          Zones
+        </button>
       </div>
 
-      {/* Add User Form */}
-      <div className="card">
-        <h3>Add New User</h3>
-        <form onSubmit={handleAddUser}>
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'end' }}>
-            <div className="form-group" style={{ flex: 1 }}>
-              <label htmlFor="userName">Name:</label>
-              <input
-                type="text"
-                id="userName"
-                value={newUserName}
-                onChange={(e) => setNewUserName(e.target.value)}
-                placeholder="Enter user name"
-                required
-              />
-            </div>
-            <div className="form-group" style={{ flex: 1 }}>
-              <label htmlFor="userPin">PIN:</label>
-              <input
-                type="password"
-                id="userPin"
-                value={newUserPin}
-                onChange={(e) => setNewUserPin(e.target.value)}
-                placeholder="Enter PIN"
-                required
-                maxLength="10"
-              />
-            </div>
-            <button type="submit" className="btn" disabled={addingUser}>
-              {addingUser ? 'Adding...' : 'Add User'}
-            </button>
-          </div>
-        </form>
-      </div>
+      {/* Tab Content */}
+      <div className="dashboard-content">
+        {activeTab === 'overview' && (
+          <>
+            {/* System Status */}
+            <div className="system-status">
+              <div className="status-item">
+                <h3>System Status</h3>
+                <div className={`status-value ${systemState.armed ? 'status-armed' : 'status-disarmed'}`}>
+                  {systemState.armed ? 'ARMED' : 'DISARMED'}
+                </div>
+                {systemState.armed && systemState.mode && (
+                  <div style={{ fontSize: '14px', marginTop: '5px' }}>
+                    Mode: {systemState.mode.toUpperCase()}
+                  </div>
+                )}
+              </div>
+              
+              <div className="status-item">
+                <h3>Total Users</h3>
+                <div className="status-value">{users?.length || 0}</div>
+              </div>
 
-      {/* Users List */}
-      <div className="card card-wide">
-        <h3>Users</h3>
-        {!users || users.length === 0 ? (
-          <p>No users found.</p>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Role</th>
-                <th>Created</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.id}>
-                  <td>{user.id}</td>
-                  <td>{user.name}</td>
-                  <td>{user.role}</td>
-                  <td>{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+              <div className="status-item">
+                <h3>Event Logs</h3>
+                <div className="status-value">{eventLogs?.length || 0}</div>
+              </div>
+            </div>
+
+            {/* Recent Event Logs */}
+            <div className="card card-wide">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3>Recent Event Logs</h3>
+                <div>
+                  <button 
+                    className="btn btn-secondary" 
+                    style={{ fontSize: '14px', padding: '8px 16px', marginRight: '10px' }}
+                    onClick={() => setActiveTab('logs')}
+                  >
+                    View All
+                  </button>
+                  {eventLogs && eventLogs.length > 0 && (
+                    <button onClick={clearEventLogs} className="btn btn-secondary" style={{ fontSize: '14px', padding: '8px 16px' }}>
+                      Clear Logs
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {!eventLogs || eventLogs.length === 0 ? (
+                <p>No event logs available.</p>
+              ) : (
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>Event Type</th>
+                      <th>Details</th>
+                      <th>User</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {eventLogs.slice(0, 10).map((log, index) => (
+                      <tr key={log.id || index}>
+                        <td>{new Date(log.timestamp).toLocaleString()}</td>
+                        <td>{log.eventType}</td>
+                        <td>{log.details}</td>
+                        <td>{log.userId || 'System'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </>
         )}
-      </div>
 
-      {/* Event Logs */}
-      <div className="card card-wide">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3>Event Logs</h3>
-          {eventLogs && eventLogs.length > 0 && (
-            <button onClick={clearEventLogs} className="btn btn-secondary" style={{ fontSize: '14px', padding: '8px 16px' }}>
-              Clear Logs
-            </button>
-          )}
-        </div>
+        {activeTab === 'users' && (
+          <>
+            {/* Add User Form */}
+            <div className="card">
+              <h3>Add New User</h3>
+              <form onSubmit={handleAddUser}>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'end' }}>
+                  <div className="form-group" style={{ flex: 1 }}>
+                    <label htmlFor="userName">Name:</label>
+                    <input
+                      type="text"
+                      id="userName"
+                      value={newUserName}
+                      onChange={(e) => setNewUserName(e.target.value)}
+                      placeholder="Enter user name"
+                      required
+                    />
+                  </div>
+                  <div className="form-group" style={{ flex: 1 }}>
+                    <label htmlFor="userPin">PIN:</label>
+                    <input
+                      type="password"
+                      id="userPin"
+                      value={newUserPin}
+                      onChange={(e) => setNewUserPin(e.target.value)}
+                      placeholder="Enter PIN"
+                      required
+                      maxLength="10"
+                    />
+                  </div>
+                  <button type="submit" className="btn" disabled={addingUser}>
+                    {addingUser ? 'Adding...' : 'Add User'}
+                  </button>
+                </div>
+              </form>
+            </div>
 
-        {!eventLogs || eventLogs.length === 0 ? (
-          <p>No event logs available.</p>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Timestamp</th>
-                <th>Event Type</th>
-                <th>Details</th>
-                <th>User</th>
-              </tr>
-            </thead>
-            <tbody>
-              {eventLogs.slice(0, 50).map((log, index) => (
-                <tr key={log.id || index}>
-                  <td>{new Date(log.timestamp).toLocaleString()}</td>
-                  <td>{log.eventType}</td>
-                  <td>{log.details}</td>
-                  <td>{log.userId || 'System'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            {/* Users List */}
+            <div className="card card-wide">
+              <h3>Users</h3>
+              {!users || users.length === 0 ? (
+                <p>No users found.</p>
+              ) : (
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Name</th>
+                      <th>Role</th>
+                      <th>Created</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((user) => (
+                      <tr key={user.id}>
+                        <td>{user.id}</td>
+                        <td>{user.name}</td>
+                        <td>{user.role}</td>
+                        <td>{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </>
+        )}
+
+        {activeTab === 'zones' && (
+          <ZoneManagement userRole={userRole} />
         )}
       </div>
     </div>

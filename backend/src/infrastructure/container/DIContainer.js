@@ -8,6 +8,7 @@ const AuthenticationService = require('../../domain/services/AuthenticationServi
 const InMemoryUserRepository = require('../persistence/InMemoryUserRepository');
 const InMemorySystemStateRepository = require('../persistence/InMemorySystemStateRepository');
 const InMemoryEventLogRepository = require('../persistence/InMemoryEventLogRepository');
+const InMemoryZoneRepository = require('../persistence/InMemoryZoneRepository');
 const GroqNlpAdapter = require('../adapters/GroqNlpAdapter');
 const FallbackNlpAdapter = require('../adapters/FallbackNlpAdapter');
 const eventBus = require('../eventBus/EventBus');
@@ -20,6 +21,14 @@ const DisarmSystemUseCase = require('../../application/useCases/DisarmSystemUseC
 const AddUserUseCase = require('../../application/useCases/AddUserUseCase');
 const ListUsersUseCase = require('../../application/useCases/ListUsersUseCase');
 const GetSystemStatusUseCase = require('../../application/useCases/GetSystemStatusUseCase');
+const CreateZoneUseCase = require('../../application/useCases/CreateZoneUseCase');
+const ArmZoneUseCase = require('../../application/useCases/ArmZoneUseCase');
+const DisarmZoneUseCase = require('../../application/useCases/DisarmZoneUseCase');
+const ListZonesUseCase = require('../../application/useCases/ListZonesUseCase');
+const GetZoneUseCase = require('../../application/useCases/GetZoneUseCase');
+const UpdateZoneUseCase = require('../../application/useCases/UpdateZoneUseCase');
+const DeleteZoneUseCase = require('../../application/useCases/DeleteZoneUseCase');
+const ManageZoneHierarchyUseCase = require('../../application/useCases/ManageZoneHierarchyUseCase');
 const ProcessCommandUseCase = require('../../application/useCases/ProcessCommandUseCase');
 const EventLogHandler = require('../../application/handlers/EventLogHandler');
 
@@ -28,6 +37,7 @@ const AuthController = require('../controllers/AuthController');
 const CommandController = require('../controllers/CommandController');
 const SystemController = require('../controllers/SystemController');
 const UserController = require('../controllers/UserController');
+const ZoneController = require('../controllers/ZoneController');
 
 class DIContainer {
   constructor() {
@@ -40,6 +50,7 @@ class DIContainer {
     this.register('userRepository', new InMemoryUserRepository());
     this.register('systemStateRepository', new InMemorySystemStateRepository());
     this.register('eventLogRepository', new InMemoryEventLogRepository());
+    this.register('zoneRepository', new InMemoryZoneRepository());
 
     // Event Bus
     this.register('eventBus', eventBus);
@@ -91,6 +102,51 @@ class DIContainer {
       this.get('systemStateRepository')
     ));
 
+    // Zone Use Cases
+    this.register('createZoneUseCase', new CreateZoneUseCase(
+      this.get('zoneRepository'),
+      this.get('eventLogRepository'),
+      this.get('eventBus')
+    ));
+
+    this.register('armZoneUseCase', new ArmZoneUseCase(
+      this.get('zoneRepository'),
+      this.get('eventLogRepository'),
+      this.get('eventBus')
+    ));
+
+    this.register('disarmZoneUseCase', new DisarmZoneUseCase(
+      this.get('zoneRepository'),
+      this.get('eventLogRepository'),
+      this.get('eventBus')
+    ));
+
+    this.register('listZonesUseCase', new ListZonesUseCase(
+      this.get('zoneRepository')
+    ));
+
+    this.register('getZoneUseCase', new GetZoneUseCase(
+      this.get('zoneRepository')
+    ));
+
+    this.register('updateZoneUseCase', new UpdateZoneUseCase(
+      this.get('zoneRepository'),
+      this.get('eventLogRepository'),
+      this.get('eventBus')
+    ));
+
+    this.register('deleteZoneUseCase', new DeleteZoneUseCase(
+      this.get('zoneRepository'),
+      this.get('eventLogRepository'),
+      this.get('eventBus')
+    ));
+
+    this.register('manageZoneHierarchyUseCase', new ManageZoneHierarchyUseCase(
+      this.get('zoneRepository'),
+      this.get('eventLogRepository'),
+      this.get('eventBus')
+    ));
+
     this.register('processCommandUseCase', new ProcessCommandUseCase(
       this.get('nlpService'),
       this.get('armSystemUseCase'),
@@ -98,6 +154,14 @@ class DIContainer {
       this.get('addUserUseCase'),
       this.get('listUsersUseCase'),
       this.get('getSystemStatusUseCase'),
+      this.get('createZoneUseCase'),
+      this.get('armZoneUseCase'),
+      this.get('disarmZoneUseCase'),
+      this.get('listZonesUseCase'),
+      this.get('getZoneUseCase'),
+      this.get('updateZoneUseCase'),
+      this.get('deleteZoneUseCase'),
+      this.get('manageZoneHierarchyUseCase'),
       this.get('eventLogRepository'),
       this.get('eventBus')
     ));
@@ -112,6 +176,16 @@ class DIContainer {
     this.register('userController', new UserController(
       this.get('addUserUseCase'),
       this.get('listUsersUseCase')
+    ));
+    this.register('zoneController', new ZoneController(
+      this.get('createZoneUseCase'),
+      this.get('getZoneUseCase'),
+      this.get('updateZoneUseCase'),
+      this.get('deleteZoneUseCase'),
+      this.get('listZonesUseCase'),
+      this.get('armZoneUseCase'),
+      this.get('disarmZoneUseCase'),
+      this.get('manageZoneHierarchyUseCase')
     ));
 
     // Event Handlers
@@ -131,7 +205,8 @@ class DIContainer {
       authController: this.get('authController'),
       commandController: this.get('commandController'),
       systemController: this.get('systemController'),
-      userController: this.get('userController')
+      userController: this.get('userController'),
+      zoneController: this.get('zoneController')
     };
   }
 }

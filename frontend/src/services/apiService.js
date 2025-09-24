@@ -77,6 +77,52 @@ export const apiService = {
     const response = await api.get('/healthz');
     return response.data;
   },
+
+  // Zones
+  getZones: async () => {
+    const response = await api.get('/zones');
+    return response.data;
+  },
+
+  getZone: async (zoneId) => {
+    const response = await api.get(`/zones/${zoneId}`);
+    return response.data;
+  },
+
+  createZone: async (zoneData) => {
+    const response = await api.post('/zones', zoneData);
+    return response.data;
+  },
+
+  updateZone: async (zoneId, zoneData) => {
+    const response = await api.put(`/zones/${zoneId}`, zoneData);
+    return response.data;
+  },
+
+  deleteZone: async (zoneId) => {
+    const response = await api.delete(`/zones/${zoneId}`);
+    return response.data;
+  },
+
+  armZone: async (zoneId, mode = 'home') => {
+    const response = await api.post(`/zones/${zoneId}/arm`, { mode });
+    return response.data;
+  },
+
+  disarmZone: async (zoneId) => {
+    const response = await api.post(`/zones/${zoneId}/disarm`);
+    return response.data;
+  },
+
+  getZoneStatus: async (zoneId) => {
+    const response = await api.get(`/zones/${zoneId}/status`);
+    return response.data;
+  },
+
+  getZoneHierarchy: async () => {
+    const response = await api.get('/zones/hierarchy');
+    return response.data;
+  },
 };
 
 export default apiService;
